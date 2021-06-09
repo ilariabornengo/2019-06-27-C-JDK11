@@ -5,8 +5,13 @@
 package it.polito.tdp.crimes;
 
 import java.net.URL;
+import java.sql.Date;
+import java.sql.Time;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
 
+import it.polito.tdp.crimes.model.Adiacenza;
 import it.polito.tdp.crimes.model.Model;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -25,16 +30,16 @@ public class CrimesController {
     private URL location;
 
     @FXML // fx:id="boxCategoria"
-    private ComboBox<?> boxCategoria; // Value injected by FXMLLoader
+    private ComboBox<String> boxCategoria; // Value injected by FXMLLoader
 
     @FXML // fx:id="boxGiorno"
-    private ComboBox<?> boxGiorno; // Value injected by FXMLLoader
+    private ComboBox<Date> boxGiorno; // Value injected by FXMLLoader
 
     @FXML // fx:id="btnAnalisi"
     private Button btnAnalisi; // Value injected by FXMLLoader
 
     @FXML // fx:id="boxArco"
-    private ComboBox<?> boxArco; // Value injected by FXMLLoader
+    private ComboBox<Adiacenza> boxArco; // Value injected by FXMLLoader
 
     @FXML // fx:id="btnPercorso"
     private Button btnPercorso; // Value injected by FXMLLoader
@@ -46,12 +51,35 @@ public class CrimesController {
     void doCreaGrafo(ActionEvent event) {
     	txtResult.clear();
     	txtResult.appendText("Crea grafo...\n");
+    	Date giorno=this.boxGiorno.getValue();
+    	String categoria=this.boxCategoria.getValue();
+    	this.model.creaGrafo(categoria, giorno);
+    	this.txtResult.appendText("GRAFO CREATO!!!\n");
+    	this.txtResult.appendText("# archi: "+this.model.getArchi()+"\n");
+    	this.txtResult.appendText("#vertici: "+this.model.getVertici()+"\n");
+    	double pesoMedio=this.model.getPesoMediano();
+    	txtResult.appendText("IL PESO MEDIANO E': "+pesoMedio+"\n");
+    	txtResult.appendText("GLI ARCHI CON PESO MINORE SONO:\n");
+    	List<Adiacenza> adiacenzeOK=new ArrayList<>(this.model.getOrdinati(giorno, categoria, pesoMedio));
+    	for(Adiacenza a:adiacenzeOK)
+    	{
+    		txtResult.appendText(a.toString()+"\n");
+    	}
+    	this.boxArco.getItems().addAll(adiacenzeOK);
     }
 
     @FXML
     void doCalcolaPercorso(ActionEvent event) {
     	txtResult.clear();
     	txtResult.appendText("Calcola percorso...\n");
+    	Adiacenza a=this.boxArco.getValue();
+    	List<String> percorsoMax=this.model.percorsoMassimo(a);
+    	txtResult.appendText("PERCORSO DI PESO MAX PER ANDARE DA "+a.getId1()+" A "+a.getId2()+"\n");
+    	for(String s:percorsoMax)
+    	{
+    		txtResult.appendText(s+"\n");
+    	}
+    	txtResult.appendText("IL PESO MASSIMO VALE: "+this.model.pesoTop);
     }
 
     @FXML // This method is called by the FXMLLoader when initialization is complete
@@ -67,5 +95,7 @@ public class CrimesController {
     
     public void setModel(Model model) {
     	this.model = model;
+    	this.boxCategoria.getItems().addAll(this.model.getCategorieReato());
+    	this.boxGiorno.getItems().addAll(this.model.getDate());
     }
 }
