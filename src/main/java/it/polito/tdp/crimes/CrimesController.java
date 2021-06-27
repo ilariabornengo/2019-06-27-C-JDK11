@@ -51,21 +51,21 @@ public class CrimesController {
     void doCreaGrafo(ActionEvent event) {
     	txtResult.clear();
     	txtResult.appendText("Crea grafo...\n");
-    	Date giorno=this.boxGiorno.getValue();
+    	Date data=this.boxGiorno.getValue();
     	String categoria=this.boxCategoria.getValue();
-    	this.model.creaGrafo(categoria, giorno);
-    	this.txtResult.appendText("GRAFO CREATO!!!\n");
-    	this.txtResult.appendText("# archi: "+this.model.getArchi()+"\n");
-    	this.txtResult.appendText("#vertici: "+this.model.getVertici()+"\n");
-    	double pesoMedio=this.model.getPesoMediano();
-    	txtResult.appendText("IL PESO MEDIANO E': "+pesoMedio+"\n");
-    	txtResult.appendText("GLI ARCHI CON PESO MINORE SONO:\n");
-    	List<Adiacenza> adiacenzeOK=new ArrayList<>(this.model.getOrdinati(giorno, categoria, pesoMedio));
-    	for(Adiacenza a:adiacenzeOK)
+    	this.model.creaGrafo(data, categoria);
+    	txtResult.appendText("GRAFO CREATO!\n");
+    	txtResult.appendText("# vertici: "+this.model.getVertici()+"\n");
+    	txtResult.appendText("# archi: "+this.model.getArchi()+"\n");
+    	double pesoMe=this.model.getpesoMediano();
+    	txtResult.appendText("Il peso mediano del grafo è_: "+pesoMe+"\n");
+    	txtResult.appendText("Gli archi con peso inferiore al mediano sono:\n");
+    	List<Adiacenza> si=new ArrayList<Adiacenza>(this.model.getInferioreMediano(pesoMe, data, categoria));
+    	for(Adiacenza a:si)
     	{
     		txtResult.appendText(a.toString()+"\n");
     	}
-    	this.boxArco.getItems().addAll(adiacenzeOK);
+    	this.boxArco.getItems().addAll(this.model.getArchi(data, categoria));
     }
 
     @FXML
@@ -73,13 +73,15 @@ public class CrimesController {
     	txtResult.clear();
     	txtResult.appendText("Calcola percorso...\n");
     	Adiacenza a=this.boxArco.getValue();
-    	List<String> percorsoMax=this.model.percorsoMassimo(a);
-    	txtResult.appendText("PERCORSO DI PESO MAX PER ANDARE DA "+a.getId1()+" A "+a.getId2()+"\n");
-    	for(String s:percorsoMax)
+    	List<String> lista=new ArrayList<String>(this.model.getListaBest(a));
+    	int pesoM=this.model.pesoBest;
+    	txtResult.appendText("Percorso massimo ha peso : "+pesoM+"\n");
+    	txtResult.appendText("E' formato da:\n");
+    	for(String s:lista)
     	{
     		txtResult.appendText(s+"\n");
     	}
-    	txtResult.appendText("IL PESO MASSIMO VALE: "+this.model.pesoTop);
+    	
     }
 
     @FXML // This method is called by the FXMLLoader when initialization is complete
@@ -95,7 +97,8 @@ public class CrimesController {
     
     public void setModel(Model model) {
     	this.model = model;
-    	this.boxCategoria.getItems().addAll(this.model.getCategorieReato());
-    	this.boxGiorno.getItems().addAll(this.model.getDate());
+    	this.boxCategoria.getItems().addAll(this.model.categorie());
+    	this.boxGiorno.getItems().addAll(this.model.data());
+    	
     }
 }

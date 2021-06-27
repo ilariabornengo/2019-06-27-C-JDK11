@@ -59,9 +59,10 @@ public class EventsDao {
 		}
 	}
 
-	public List<String> listCategorie(){
-		String sql = "SELECT distinct e.offense_category_id as id "
-				+ "FROM `events` e " ;
+	public List<String> getCategorie(){
+		String sql = "SELECT DISTINCT e.offense_category_id as id "
+				+ "FROM `events` e "
+				+ "ORDER BY e.offense_category_id " ;
 		try {
 			Connection conn = DBConnect.getConnection() ;
 
@@ -72,7 +73,6 @@ public class EventsDao {
 			ResultSet res = st.executeQuery() ;
 			
 			while(res.next()) {
-				
 				list.add(res.getString("id"));
 			}
 			
@@ -86,9 +86,11 @@ public class EventsDao {
 		}
 	}
 	
-	public List<Date> listDate(){
-		String sql = "SELECT distinct date(e.reported_date) AS dateOK "
-				+ "FROM `events` e" ;
+	public List<Date> getDateOK(){
+		String sql = "SELECT DISTINCT date(e.reported_date) AS data "
+				+ "FROM `events` e "
+				+ "ORDER BY date(e.reported_date) "
+				+ " " ;
 		try {
 			Connection conn = DBConnect.getConnection() ;
 
@@ -99,8 +101,7 @@ public class EventsDao {
 			ResultSet res = st.executeQuery() ;
 			
 			while(res.next()) {
-				
-				list.add(res.getDate("dateOK"));
+				list.add(res.getDate("data"));
 			}
 			
 			conn.close();
@@ -113,10 +114,10 @@ public class EventsDao {
 		}
 	}
 	
-	public List<String> getVertici(Date data,String categoria){
-		String sql = "SELECT distinct e.offense_type_id AS tipo "
+	public void getVertici(List<String> vertici, Date data,String categoria){
+		String sql = "SELECT distinct e.offense_type_id as id "
 				+ "FROM `events` e "
-				+ "WHERE date(e.reported_date)=? "
+				+ "WHERE DATE(e.reported_date)=? "
 				+ "AND e.offense_category_id=? " ;
 		try {
 			Connection conn = DBConnect.getConnection() ;
@@ -125,13 +126,55 @@ public class EventsDao {
 			st.setDate(1, data);
 			st.setString(2, categoria);
 			
-			List<String> list = new ArrayList<>() ;
+			
 			
 			ResultSet res = st.executeQuery() ;
 			
 			while(res.next()) {
-				
-				list.add(res.getString("tipo"));
+				if(!vertici.contains(res.getString("id")))
+				{
+					vertici.add(res.getString("id"));
+				}
+			}
+			
+			conn.close();
+			
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			
+		}
+	}
+	
+	public List<Adiacenza> getAdiacenze(List<String> vertici, Date data,String categoria){
+		String sql = "SELECT e1.offense_type_id AS id1, e2.offense_type_id AS id2, COUNT(e1.precinct_id) AS peso "
+				+ "FROM `events` e1, `events` e2 "
+				+ "WHERE e1.offense_type_id> e2.offense_type_id "
+				+ "AND e1.precinct_id=e2.precinct_id "
+				+ "AND e1.offense_category_id=e2.offense_category_id "
+				+ "AND e1.offense_category_id=? "
+				+ "AND DATE(e1.reported_date)=DATE(e2.reported_date) "
+				+ "AND DATE(e1.reported_date)=? "
+				+ "GROUP BY e1.offense_type_id,e2.offense_type_id "
+				+ "HAVING peso!=0 " ;
+		try {
+			Connection conn = DBConnect.getConnection() ;
+
+			PreparedStatement st = conn.prepareStatement(sql) ;
+			st.setString(1, categoria);
+			st.setDate(2, data);
+			
+			List<Adiacenza> list = new ArrayList<>() ;
+			
+			ResultSet res = st.executeQuery() ;
+			
+			while(res.next()) {
+				if(vertici.contains(res.getString("id1")) && vertici.contains(res.getString("id2")))
+				{
+					Adiacenza a=new Adiacenza(res.getString("id1"),res.getString("id2"),res.getInt("peso"));
+					list.add(a);
+				}
 			}
 			
 			conn.close();
@@ -144,43 +187,5 @@ public class EventsDao {
 		}
 	}
 	
-	public List<Adiacenza> getAdiacenze(Date data,String categoria,List<String> vertici){
-		String sql = "SELECT e1.offense_type_id AS id1, e2.offense_type_id AS id2, COUNT(e1.precinct_id) AS peso "
-				+ "FROM `events` e1, `events` e2 "
-				+ "WHERE DATE(e1.reported_date)=DATE(e2.reported_date) "
-				+ "AND DATE(e1.reported_date)=? "
-				+ "AND e1.offense_category_id=e2.offense_category_id "
-				+ "AND e1.offense_category_id=? "
-				+ "AND e1.offense_type_id> e2.offense_type_id "
-				+ "AND e1.precinct_id=e2.precinct_id "
-				+ "GROUP BY e1.offense_type_id, e2.offense_type_id " ;
-		try {
-			Connection conn = DBConnect.getConnection() ;
-
-			PreparedStatement st = conn.prepareStatement(sql) ;
-			st.setDate(1, data);
-			st.setString(2, categoria);
-			
-			List<Adiacenza> list = new ArrayList<>() ;
-			
-			ResultSet res = st.executeQuery() ;
-			
-			while(res.next()) {
-				if(vertici.contains(res.getString("id1")) && vertici.contains(res.getString("id2")))
-					{
-						Adiacenza a=new Adiacenza(res.getString("id1"),res.getString("id2"),res.getInt("peso"));
-						list.add(a);
-					}
-				
-			}
-			
-			conn.close();
-			return list ;
-
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null ;
-		}
-	}
+	
 }

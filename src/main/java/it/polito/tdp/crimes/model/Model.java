@@ -14,134 +14,137 @@ import it.polito.tdp.crimes.db.EventsDao;
 
 public class Model {
 	
-	private EventsDao dao;
-	private Graph<String,DefaultWeightedEdge> grafo;
-	public List<String> percorsoBest;
-	public int pesoTop;
+	EventsDao dao;
+	List<String> vertici;
+	Graph<String,DefaultWeightedEdge> grafo;
+	List<String> percorsoBest;
+	public int pesoBest;
 	
 	public Model()
 	{
 		this.dao=new EventsDao();
 	}
 	
-	public void creaGrafo(String categoria,Date data)
+	public void creaGrafo(Date data,String categoria)
 	{
+		this.vertici=new ArrayList<String>();
 		this.grafo=new SimpleWeightedGraph<String,DefaultWeightedEdge>(DefaultWeightedEdge.class);
+		
 		//aggiungo i vertici
-		Graphs.addAllVertices(this.grafo, this.dao.getVertici(data, categoria));
+		this.dao.getVertici(vertici, data, categoria);
+		Graphs.addAllVertices(this.grafo, this.vertici);
 		
 		//aggiungo gli archi
-		for(Adiacenza a:this.dao.getAdiacenze(data, categoria, this.dao.getVertici(data, categoria)))
+		for(Adiacenza a:this.dao.getAdiacenze(vertici, data, categoria))
 		{
-			if(this.grafo.vertexSet().contains(a.getId1())&& this.grafo.vertexSet().contains(a.getId2()))
+			if(this.grafo.vertexSet().contains(a.getS1()) && this.grafo.vertexSet().contains(a.getS2()))
 			{
-				Graphs.addEdge(this.grafo, a.getId1(), a.getId2(), a.getPeso());
+				Graphs.addEdge(this.grafo, a.getS1(), a.getS2(), a.getPeso());
 			}
 		}
 	}
-	
-	public double getPesoMediano()
+	public List<Adiacenza> getArchi(Date data,String categoria)
 	{
-		Integer min=Integer.MAX_VALUE;
-		Integer max=Integer.MIN_VALUE;
-		double pesoMedio=0.0;
+		return this.dao.getAdiacenze(vertici, data, categoria);
+	}
+	public double getpesoMediano()
+	{
+		double minimo=Double.MAX_VALUE;
+		double massimo=0.0;
+		double finale=0.0;
 		for(DefaultWeightedEdge d:this.grafo.edgeSet())
 		{
-			Integer peso=(int) this.grafo.getEdgeWeight(d);
-			if(peso<min)
+			double peso=this.grafo.getEdgeWeight(d);
+			if(peso>massimo)
 			{
-				min=peso;
-			}
-			if(peso>max)
+				massimo=peso;
+			}else if(peso<minimo)
 			{
-				max=peso;
+				minimo=peso;
 			}
 		}
-		pesoMedio=(max+min)/2;
-		return pesoMedio;
+		
+		finale=(massimo+minimo)/2;
+		return finale;
 	}
-	
-	public List<Adiacenza> getOrdinati(Date data,String categoria,double medio)
+	public List<Adiacenza> getInferioreMediano(double pesoMediano,Date data,String categoria)
 	{
-		List<String> vertici=new ArrayList<>(this.grafo.vertexSet());
-		List<Adiacenza> OK=new ArrayList<Adiacenza>();
-		for(Adiacenza a:this.dao.getAdiacenze(data, categoria, vertici))
+		List<Adiacenza> infOK=new ArrayList<Adiacenza>();
+		for(Adiacenza a:this.dao.getAdiacenze(vertici, data, categoria))
+		{
+			if(a.getPeso()<pesoMediano)
 			{
-				if(a.getPeso()<medio)
-				{
-					OK.add(a);
-				}
+				infOK.add(a);
 			}
-		return OK;
+		}
+		return infOK;
 	}
 	
-	public List<String> percorsoMassimo(Adiacenza a)
+	public List<String> getListaBest(Adiacenza a)
 	{
-		this.percorsoBest=new ArrayList<>();
+		String partenza=a.getS1();
+		String arrivo=a.getS2();
+		this.percorsoBest=new ArrayList<String>();
+		this.pesoBest=0;
 		List<String> parziale=new ArrayList<String>();
-		String partenza=a.getId1();
 		parziale.add(partenza);
-		this.pesoTop=0;
-		ricorsione(parziale,0,a);
+		ricorsione(parziale,arrivo);
 		return this.percorsoBest;
+		
 	}
 	
-	private void ricorsione(List<String> parziale, int i,Adiacenza a) {
-		String arrivo=a.getId2();
+	private void ricorsione(List<String> parziale, String arrivo) {
 		String ultimo=parziale.get(parziale.size()-1);
-		//caso terminale
 		if(ultimo.equals(arrivo))
 		{
-			Integer pesoParz=getpeso(parziale);
-			if(pesoParz>this.pesoTop)
+			int pesoCompl=calcolaPeso(parziale);
+			if(pesoCompl>this.pesoBest)
 			{
-				this.pesoTop=pesoParz;
-				this.percorsoBest=new ArrayList<>(parziale);
+				this.percorsoBest=new ArrayList<String>(parziale);
+				this.pesoBest=pesoCompl;
 				return;
 			}
 		}
 		
-		//non caso terminale
-		for(String vicino:Graphs.neighborListOf(this.grafo, ultimo))
+		//fuori dal caso terminale
+		for(String s:Graphs.neighborListOf(this.grafo, ultimo))
 		{
-			if(!parziale.contains(vicino))
+			if(!parziale.contains(s))
 			{
-				parziale.add(vicino);
-				ricorsione(parziale,i+1,a);
-				parziale.remove(parziale.size()-1);
-				
+				parziale.add(s);
+				ricorsione(parziale,arrivo);
+				parziale.remove(s);
 			}
 		}
-		
 	}
 
-	private Integer getpeso(List<String> parziale) {
-		Integer peso=0;
-		for(int i=1; i<parziale.size();i++)
+	private int calcolaPeso(List<String> parziale) {
+		int tot=0;
+		for(int i=1;i<parziale.size();i++)
 		{
-			String id1=parziale.get(i-1);
-			String id2=parziale.get(i);
-			peso+=(int) this.grafo.getEdgeWeight(this.grafo.getEdge(id1, id2));
+			String v1=parziale.get(i-1);
+			String v2=parziale.get(i);
+			int peso=(int) this.grafo.getEdgeWeight(this.grafo.getEdge(v1, v2));
+			tot+=peso;
 		}
-		return peso;
+		return tot;
 	}
 
+	public int getVertici()
+	{
+		return this.grafo.vertexSet().size();
+	}
 	public int getArchi()
 	{
 		return this.grafo.edgeSet().size();
 	}
 	
-	public int getVertici()
+	public List<String> categorie()
 	{
-		return this.grafo.vertexSet().size();
+		return dao.getCategorie();
 	}
-	
-	public List<String> getCategorieReato()
+	public List<Date> data()
 	{
-		return this.dao.listCategorie();
-	}
-	public List<Date> getDate()
-	{
-		return this.dao.listDate();
+		return dao.getDateOK();
 	}
 }
